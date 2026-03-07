@@ -1,0 +1,26 @@
+# Python虚拟环境
+venv/
+.env/
+
+# 大型数据文件
+data/
+*.tgz
+*.tar.gz
+*.zip
+*.7z
+
+# 模型文件
+*.pt
+*.pth
+*.h5
+*.ckpt
+
+# 二进制文件
+*.dll
+*.exe
+*.so
+*.dylib
+
+# IDE配置
+.idea/
+.vscode/
