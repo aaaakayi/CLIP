@@ -18,18 +18,22 @@ class TextTransformerForCLIP(nn.Module):
         input_ids = torch.cat([cls_ids, input_ids], dim=1)  # [B, seq_len+1]
 
         if attention_mask is not None:
-            # 假设 attention_mask 形状为 [B, seq_len]（二维）
-            # 转换为 [B, 1, 1, seq_len]（四维）
-            attention_mask = attention_mask.bool()
-            attention_mask = attention_mask.unsqueeze(1).unsqueeze(2)  # [B, 1, 1, seq_len]
-            # 创建 cls_mask（对应 [CLS] token 的位置，始终有效）
-            cls_mask = torch.ones(B, 1, 1, 1, dtype=attention_mask.dtype, device=attention_mask.device)
-            # 在最后一个维度拼接
+            # tools.mask_softmax 约定: True 表示被屏蔽。
+            if attention_mask.dim() == 2:
+                # HF/BERT 常见约定: 1=有效token, 0=padding。
+                attention_mask = (attention_mask == 0).unsqueeze(1).unsqueeze(2)
+            elif attention_mask.dim() == 4:
+                # 兼容已是 [B,1,1,L] 的padding掩码。
+                attention_mask = attention_mask.bool()
+            else:
+                raise ValueError(f"Unsupported attention_mask dim: {attention_mask.dim()}")
+
+            # CLS 不应被屏蔽，因此该位为 False。
+            cls_mask = torch.zeros(B, 1, 1, 1, dtype=torch.bool, device=attention_mask.device)
             attention_mask = torch.cat([cls_mask, attention_mask], dim=-1)  # [B, 1, 1, seq_len+1]
 
-            # 如果编码器需要 valid_len，可计算（原始有效长度 + 1）
-            # valid_len = attention_mask_orig.sum(dim=1) + 1  # 但这里没有原始 mask，可从 attention_mask 去掉 cls 部分再计算
-            valid_len = None  # 先设为 None，视内部实现而定
+            # valid_len 包含 CLS 位置。
+            valid_len = (~attention_mask.squeeze(1).squeeze(1)).sum(dim=-1)
         else:
             valid_len = None
 

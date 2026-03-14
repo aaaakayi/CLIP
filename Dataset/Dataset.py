@@ -10,10 +10,10 @@ class ImageTextDataset(Dataset):
         'input_ids' : 图像描述的 encoding，每个图像有五个句子描述
         'attention_mask' : 相关 encoding 的 mask
     """
-    def __init__(self, h5_path):
+    def __init__(self, h5_path, transform=None):
         self.h5_path = h5_path
         self.h5_file = None  # 延迟打开，避免 pickle
-
+        self.transform = transform
     def __len__(self):
         # 临时打开文件获取长度，然后关闭
         with h5py.File(self.h5_path, 'r') as f:
@@ -27,10 +27,13 @@ class ImageTextDataset(Dataset):
         input_ids = self.h5_file['input_ids'][idx]
         attention_mask = self.h5_file['attention_mask'][idx]
 
-        # 转换为 torch tensor（HDF5 读取为 numpy 数组）
-        image = torch.from_numpy(image)          # [3, 224, 224]
+        # 转为 tensor（假设 H5 中存储的是 uint8，值范围 0-255）
+        image = torch.from_numpy(image).float() / 255.0  # 归一化到 [0,1]
         input_ids = torch.from_numpy(input_ids).long()
         attention_mask = torch.from_numpy(attention_mask).long()
+
+        if self.transform:
+            image = self.transform(image)   # 应用数据增强
 
         return image, input_ids, attention_mask
 

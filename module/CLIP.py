@@ -32,6 +32,8 @@ class CLIP(nn.Module):
         return image_feat, text_feat
 
 def clip_loss(image_feat, text_feat, logit_scale):
+    # 将可学习的 log 温度还原到线性空间，并做上界截断，防止数值过大
+    logit_scale = logit_scale.exp().clamp(max=np.log(100))
     # 计算相似度矩阵 (batch_size, batch_size)
     logits = logit_scale * image_feat @ text_feat.T
     labels = torch.arange(len(logits), device=logits.device)

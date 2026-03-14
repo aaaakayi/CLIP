@@ -8,14 +8,15 @@ from PIL import Image
 from torchvision import transforms
 from tqdm import tqdm
 from transformers import AutoTokenizer
+import open_clip
 
 class ImageTextToHDF5:
-    def __init__(self, image_dir, text_dir, output_h5_path, transform=None, tokenizer=None, max_len=77):
+    def __init__(self, image_dir, text_dir, output_h5_path, transform=None, max_len=77):
         self.image_dir = image_dir
         self.text_dir = text_dir
         self.output_h5 = output_h5_path
         self.transform = transform
-        self.tokenizer = tokenizer
+        self.tokenizer = open_clip.get_tokenizer('ViT-B-32', context_length=max_len)
         self.max_len = max_len
 
         # 获取所有文件名（不含后缀）
@@ -75,15 +76,9 @@ class ImageTextToHDF5:
 
                 # 3. 对每一行进行编码，写入 H5
                 for line in lines:
-                    encoding = self.tokenizer(
-                        line,
-                        padding='max_length',
-                        truncation=True,
-                        max_length=self.max_len,
-                        return_tensors='np'  # 直接返回 numpy 数组
-                    )
-                    input_ids = encoding['input_ids'][0]      # [max_len]
-                    attention_mask = encoding['attention_mask'][0]
+                    tokens = self.tokenizer(line)                     # [1, max_len]
+                    input_ids = tokens[0].numpy().astype(np.int32)     # [max_len]
+                    attention_mask = (input_ids != 0).astype(np.int32) # 0 为 pad token id
 
                     # 写入 H5
                     img_dataset[idx] = image_np
@@ -95,9 +90,9 @@ class ImageTextToHDF5:
             assert idx == total_samples, f"Expected {total_samples}, wrote {idx}"
 
 if __name__ == "__main__":
-    image_dir = './Data/train'
-    text_dir = './Data/train'
-    output_h5_path = './Data/train.h5'
+    image_dir = './Data/test'
+    text_dir = './Data/test'
+    output_h5_path = './Data/test.h5'
 
     if os.path.exists(output_h5_path):
         # 文件已存在，直接读取并打印 keys
@@ -105,6 +100,18 @@ if __name__ == "__main__":
             print("文件中的数据集:", list(f.keys()))
             print(len(f['images']))
             print(len(f['input_ids']))
+            print(f['images'][0].shape)  # 应该是 (3, 224, 224)
+            print(f['input_ids'][0].shape)  # 应该是 (max_len,)
+            print(f['attention_mask'][0].shape)  # 应该是 (max_len,)
+            
+        model_name = 'ViT-B-32'
+        tokenizer = open_clip.get_tokenizer(model_name)
+        with h5py.File(output_h5_path, 'r') as f:
+            # 查看第一张图片的五条文本
+            for i in range(5):
+                input_ids = f['input_ids'][i]
+                text = tokenizer.decode(input_ids, skip_special_tokens=True)
+                print(f"样本 {i}: {text}")
     else:
         # 文件不存在，生成
         transform = transforms.Compose([
@@ -112,7 +119,7 @@ if __name__ == "__main__":
             transforms.ToTensor(),
             transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
         ])
-        tokenizer = AutoTokenizer.from_pretrained('./Bert_tokenizer')
-        generator = ImageTextToHDF5(image_dir, text_dir, output_h5_path, transform, tokenizer)
+
+        generator = ImageTextToHDF5(image_dir, text_dir, output_h5_path, transform)
         generator.generate()
         print("HDF5 文件生成完毕！")
