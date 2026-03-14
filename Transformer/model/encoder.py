@@ -22,7 +22,7 @@ class transfomer_encoder(nn.Module):
                 transfomer_cell(num_heads,dropout,d_model)
             )
     def forward(self,x,valid_len=None,mask=None):
-        x = self.embeded(x)
+        x = self.embeded(x) * (self.d_model ** 0.5)
         x = self.pos_encoding(x)
         self.attention_weight = []
         i = 1

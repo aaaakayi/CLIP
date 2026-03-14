@@ -63,14 +63,15 @@ class transfomer_cell(nn.Module):
         #初始化FFN
         self.ffn = FFN(input = d_model,num_hiddens = 4*d_model,output = d_model) #这里直接采用经典的涉及方式,简化参数
         #初始化add & norm
-        self.addnorm = add_norm(normalized_shape = d_model,dropout = dropout)
+        self.addnorm1 = add_norm(normalized_shape = d_model,dropout = dropout)
+        self.addnorm2 = add_norm(normalized_shape = d_model,dropout = dropout)
 
     def forward(self,q, k, v, valid_len=None, mask=None):
         residual1 = q
         y,self.attention_weights = self.multiheadAttention(q,k,v,valid_len = valid_len, mask = mask) #编码过程不需要掩码
-        x2 = self.addnorm(x=residual1,y=y)
+        x2 = self.addnorm1(x=residual1,y=y)
 
         residual2 = x2
         y2 = self.ffn(x2)
-        output = self.addnorm(x=residual2,y=y2)
+        output = self.addnorm2(x=residual2,y=y2)
         return output,self.attention_weights

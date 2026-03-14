@@ -150,8 +150,9 @@ def mask_softmax(x, valid_lens=None, mask=None):
         # 合并掩码
         final_mask = final_mask | padding_mask
 
-    # 应用掩码：将被屏蔽的位置设置为负无穷
-    x_masked = x.masked_fill(final_mask, -1e9)
+    # 混合精度下 float16 不能表示 -1e9，使用 dtype 可表示的最小值避免溢出。
+    mask_fill_value = torch.finfo(x.dtype).min
+    x_masked = x.masked_fill(final_mask, mask_fill_value)
 
     # 应用softmax
     result = F.softmax(x_masked, dim=-1)
