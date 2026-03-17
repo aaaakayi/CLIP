@@ -43,7 +43,7 @@ def parse_args():
     )
     parser.add_argument("--model_name", type=str, default="ViT-B-32")
     parser.add_argument("--save_dir", type=str, default="./result")
-    parser.add_argument("--images_per_batch", type=int, default=8)
+    parser.add_argument("--images_per_batch", type=int, default=15)
     parser.add_argument("--captions_per_image", type=int, default=5)
     parser.add_argument("--epochs", type=int, default=20)
     parser.add_argument("--lr", type=float, default=5e-5)
@@ -60,7 +60,7 @@ def parse_args():
     parser.add_argument(
         "--accum_steps",
         type=int,
-        default=1,
+        default=4,
         help="Gradient accumulation steps. Effective batch size = images_per_batch * captions_per_image * accum_steps.",
     )
     parser.add_argument(
@@ -93,15 +93,29 @@ class LoRALinear(nn.Module):
         self.linear = linear
         self.linear.requires_grad_(False)
         in_f, out_f = linear.in_features, linear.out_features
-        self.lora_A = nn.Parameter(torch.zeros(r, in_f))
-        self.lora_B = nn.Parameter(torch.zeros(out_f, r))
+        base_device = linear.weight.device
+        base_dtype = linear.weight.dtype
+        self.lora_A = nn.Parameter(torch.zeros(r, in_f, device=base_device, dtype=base_dtype))
+        self.lora_B = nn.Parameter(torch.zeros(out_f, r, device=base_device, dtype=base_dtype))
         nn.init.kaiming_uniform_(self.lora_A, a=math.sqrt(5))
         self.lora_scale = lora_scale
         self.r = r
 
+    @property
+    def weight(self):
+        # MultiheadAttention may directly access out_proj.weight.
+        return self.linear.weight
+
+    @property
+    def bias(self):
+        # Keep API compatible with nn.Linear for attention internals.
+        return self.linear.bias
+
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         out = self.linear(x)
-        out = out + self.lora_scale * (x @ self.lora_A.T @ self.lora_B.T)
+        lora_A = self.lora_A.to(device=x.device, dtype=x.dtype)
+        lora_B = self.lora_B.to(device=x.device, dtype=x.dtype)
+        out = out + self.lora_scale * (x @ lora_A.T @ lora_B.T)
         return out
 
 
@@ -276,7 +290,7 @@ def evaluate_loss(model, data_loader, device, captions_per_image, amp_enabled):
         attention_mask = attention_mask.to(device, non_blocking=True)
         group_ids = build_group_ids(images.size(0), captions_per_image, device)
 
-        with autocast(enabled=amp_enabled):
+        with autocast(device_type=device.type, enabled=amp_enabled):
             image_feat, text_feat = model(images, input_ids, attention_mask)
             loss = siglip_loss_with_group(
                 image_feat=image_feat,
@@ -414,6 +428,8 @@ def main():
         num_lora = apply_lora_to_visual_encoder(
             model.image_encoder, r=lora_r, lora_scale=lora_scale
         )
+        # LoRA modules are created after model.to(device); move them onto the target device.
+        model.to(device)
         n_trainable = sum(p.numel() for p in model.parameters() if p.requires_grad)
         n_total = sum(p.numel() for p in model.parameters())
         print(
@@ -460,7 +476,7 @@ def main():
             if accum_counter == 0:
                 optimizer.zero_grad(set_to_none=True)
 
-            with autocast(enabled=amp_enabled):
+            with autocast(device_type=device.type, enabled=amp_enabled):
                 image_feat, text_feat = model(images, input_ids, attention_mask)
                 loss = siglip_loss_with_group(
                     image_feat=image_feat,
