@@ -53,14 +53,18 @@ Top 3 matching descriptions:
 同时在test上计算召回率：
 
 训练后模型的效果：
+<pre><code>
 R@1: i2t=0.2387, t2i=0.1420, average=0.1903.
 R@5: i2t=0.5180, t2i=0.3980, average=0.4580.
 R@10: i2t=0.6773, t2i=0.5505, average=0.6139.
+</code></pre>
 
 原始模型结果：
+<pre><code>
 R@1: i2t=0.0013, t2i=0.0013, average=0.0013.
 R@5: i2t=0.0053, t2i=0.0041, average=0.0047.
 R@10: i2t=0.0120, t2i=0.0076, average=0.0098.
+</code></pre>
 
 验证了模型从随机猜测(R@1 : 0.13%)经过训练达到了一定的对齐能力(R@1 : 19.03%)
 
