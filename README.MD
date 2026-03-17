@@ -7,14 +7,17 @@ ViT使用预训练模型参数，其中Transformer模块注入LoRA，TxtTransfor
 
 ## 训练结果
 训练过程如下：
-
-![train/valid loss](https://github.com/aaaakayi/CLIP/blob/main/result/loss_curve.png)
+<div align="center">
+  <img src="https://github.com/aaaakayi/CLIP/blob/main/result/loss_curve.png" alt="train/valid loss">
+</div>
 
 在20个epoch后，训练损失明显下降，证明模型学习到了对齐能力。
 
-infer_clip_candidates.py中验证模型对图像和文本的对齐能力
+infer_clip_candidates.py中验证模型对图像和文本的对齐能力:
 
-![验证样本](https://github.com/aaaakayi/CLIP/blob/main/Data/small_test/s0004500.jpg)
+<div align="center">
+  <img src="https://github.com/aaaakayi/CLIP/blob/main/Data/small_test/s0004500.jpg" alt="验证样本">
+</div>
 
 待选文本如下：
 <pre><code>
