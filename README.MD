@@ -1,4 +1,4 @@
-## CLIP微调项目
+# CLIP微调项目
 使用自己构建的Transformer编写CLIP
 在小数据集上，为了避免对称性破缺性困难，使用open clip加载预训练过后的Vit-B-32
 ViT使用预训练模型参数，其中Transformer模块注入LoRA，TxtTransformer则从零开始训练，tokenizer使用Bert-tokenizer
@@ -7,11 +7,11 @@ ViT使用预训练模型参数，其中Transformer模块注入LoRA，TxtTransfor
 
 # 训练结果
 训练过程如下：
-![train/valid loss](.result/loss_curve.png)
+![train/valid loss](./result/loss_curve.jpg)
 在20个epoch后，训练损失明显下降，证明模型学习到了对齐能力。
 
 infer_clip_candidates.py中验证模型对图像和文本的对齐能力
-![验证图像](.Data/small_test/s0004500.png)
+![验证样本](./Data/small_test/s0004500.jpg)
 
 待选文本如下：
 <pre><code>
@@ -29,13 +29,13 @@ candidate_texts = [
 </code></pre>
 
 
-训练后模型的效果：
+训练后模型的效果:
 Top 3 matching descriptions:
 1. A girl is on the sidewalk looking at a white van in the street . (score: 0.1149)
 2. A car is parked on the street. (score: 0.0108)
 3. A person reading a book in a library. (score: -0.0673)
 
-原始模型结果：
+原始模型结果:
 Top 3 matching descriptions:
 1. A delicious pizza with pepperoni. (score: -0.0154)
 2. Two dogs running through a low lying body of water . (score: -0.0194)
