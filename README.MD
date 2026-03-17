@@ -1,8 +1,8 @@
 # CLIP微调项目
-使用自己构建的Transformer编写CLIP
-在小数据集上，为了避免对称性破缺性困难，使用open clip加载预训练过后的Vit-B-32
-ViT使用预训练模型参数，其中Transformer模块注入LoRA，TxtTransformer则从零开始训练，tokenizer使用Bert-tokenizer
-采用梯度累计方法和siglip损失函数克服有限算力下，小batch size训练时面临loss卡在训练基线不动的情况
+使用自己构建的Transformer编写CLIP。
+在小数据集上，为了避免对称性破缺性困难，使用open clip加载预训练过后的Vit-B-32。
+ViT使用预训练模型参数，其中Transformer模块注入LoRA，TxtTransformer则从零开始训练，tokenizer使用Bert-tokenizer。
+采用梯度累计方法和siglip损失函数克服有限算力下，小batch size训练时面临loss卡在训练基线不动的情况。
 模型在Flickr8k数据集（4500训练/1500测试）上完成训练与评估。
 
 ## 训练结果
