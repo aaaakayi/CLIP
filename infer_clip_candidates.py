@@ -11,66 +11,6 @@ from train import OpenCLIPVisualEncoder
 OPENAI_CLIP_MEAN = (0.48145466, 0.4578275, 0.40821073)
 OPENAI_CLIP_STD = (0.26862954, 0.26130258, 0.27577711)
 
-def compute_recall(image_features, text_features, ks=(1, 5, 10)):
-    """
-    计算图像到文本和文本到图像的 R@K 指标。
-
-    Args:
-        image_features: 图像特征，形状为 (N, D)，可以是 torch.Tensor 或 numpy.ndarray。
-        text_features: 文本特征，形状为 (N, D)，与图像特征一一对应。
-        ks: 需要计算的 K 值列表，如 (1, 5, 10)。
-
-    Returns:
-        dict: 包含 i2t 和 t2i 的 R@K 结果，例如：
-              {'i2t_R@1': 0.85, 'i2t_R@5': 0.95, 'i2t_R@10': 0.98,
-               't2i_R@1': 0.84, 't2i_R@5': 0.94, 't2i_R@10': 0.97,
-               'average_R@1': 0.845, ...}
-    """
-    # 转换为 torch.Tensor（如果需要）
-    if not isinstance(image_features, torch.Tensor):
-        image_features = torch.from_numpy(image_features)
-    if not isinstance(text_features, torch.Tensor):
-        text_features = torch.from_numpy(text_features)
-
-    # 确保在相同设备上（CPU/GPU）
-    device = image_features.device
-    text_features = text_features.to(device)
-
-    # 归一化特征（如果未归一化，则进行 L2 归一化）
-    image_features = image_features / image_features.norm(dim=-1, keepdim=True)
-    text_features = text_features / text_features.norm(dim=-1, keepdim=True)
-
-    # 计算相似度矩阵 (N, N)
-    sim_matrix = image_features @ text_features.T  # 点积
-
-    n = sim_matrix.size(0)
-    indices = torch.arange(n, device=device)
-
-    # 图像到文本检索：对于每张图，找到相似度最高的文本索引
-    i2t_results = {}
-    for k in ks:
-        # 获取每行前 k 个最大值的索引
-        topk_indices = sim_matrix.topk(k, dim=1).indices  # (N, k)
-        # 检查对角线元素（正确文本）是否出现在 top-k 中
-        correct = (topk_indices == indices.unsqueeze(1)).any(dim=1)
-        i2t_results[f'R@{k}'] = correct.float().mean().item()
-
-    # 文本到图像检索：对于每句文本，找到相似度最高的图像索引
-    t2i_results = {}
-    for k in ks:
-        topk_indices = sim_matrix.topk(k, dim=0).indices  # (k, N)，需要转置
-        correct = (topk_indices == indices.unsqueeze(0).T).any(dim=0)
-        t2i_results[f'R@{k}'] = correct.float().mean().item()
-
-    # 合并结果
-    results = {}
-    for k in ks:
-        results[f'i2t_R@{k}'] = i2t_results[f'R@{k}']
-        results[f't2i_R@{k}'] = t2i_results[f'R@{k}']
-        results[f'average_R@{k}'] = (i2t_results[f'R@{k}'] + t2i_results[f'R@{k}']) / 2
-
-    return results
-
 def test_model(
     model,
     tokenizer,
